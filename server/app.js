@@ -63,6 +63,16 @@ async function assertSectionAccess(req, res, sectionId) {
   return section;
 }
 
+async function assertActiveSectionStudents(res, sectionId, records) {
+  const enrollments = await all('enrollments', { sectionId });
+  const activeStudentIds = new Set(enrollments.filter((enrollment) => enrollment.status === 'active').map((enrollment) => enrollment.studentId));
+  if (records.some((record) => !activeStudentIds.has(record.studentId))) {
+    res.status(400).json({ message: 'Solo se permiten estudiantes con matrícula activa en la sección.' });
+    return false;
+  }
+  return true;
+}
+
 app.get('/api/health', async (_req, res) => res.json({ status: 'ok', dataMode: storeMode(), timestamp: new Date().toISOString() }));
 
 app.post('/api/auth/login', loginLimiter, validate(z.object({ email: z.string().email(), password: z.string().min(6) })), async (req, res) => {
@@ -124,11 +134,20 @@ app.get('/api/dashboard', requireAuth, async (req, res) => {
   const myEnrollments = enrollments.filter((e) => e.studentId === req.auth.sub && e.status === 'active');
   const mySectionIds = myEnrollments.map((e) => e.sectionId);
   const mySessions = sessions.filter((s) => mySectionIds.includes(s.sectionId));
-  const myAttendance = attendance.filter((a) => a.studentId === req.auth.sub);
-  const present = myAttendance.filter((a) => ['present', 'late'].includes(a.status)).length;
+  const mySessionIds = mySessions.map((s) => s._id);
+  const myAttendance = attendance.filter((a) => a.studentId === req.auth.sub && mySessionIds.includes(a.sessionId));
+  const present = myAttendance.filter((a) => ['present', 'late', 'justified'].includes(a.status)).length;
   const myEvaluations = evaluations.filter((e) => mySectionIds.includes(e.sectionId));
-  const myGrades = grades.filter((g) => g.studentId === req.auth.sub);
-  const average = myGrades.length ? (myGrades.reduce((sum, grade) => sum + grade.score, 0) / myGrades.length).toFixed(1) : '—';
+  const myEvaluationIds = myEvaluations.map((e) => e._id);
+  const myGrades = grades.filter((g) => g.studentId === req.auth.sub && myEvaluationIds.includes(g.evaluationId));
+  const courseAverages = mySectionIds.map((sectionId) => {
+    const sectionEvaluations = myEvaluations.filter((evaluation) => evaluation.sectionId === sectionId);
+    const completed = sectionEvaluations.map((evaluation) => ({ evaluation, grade: myGrades.find((grade) => grade.evaluationId === evaluation._id) })).filter((item) => item.grade);
+    const completedWeight = completed.reduce((sum, item) => sum + Number(item.evaluation.weight), 0);
+    const weightedPoints = completed.reduce((sum, item) => sum + Number(item.grade.score) * Number(item.evaluation.weight), 0);
+    return completedWeight ? weightedPoints / completedWeight : null;
+  }).filter((value) => value !== null);
+  const average = courseAverages.length ? (courseAverages.reduce((sum, value) => sum + value, 0) / courseAverages.length).toFixed(1) : '—';
   return res.json({
     stats: [
       { label: 'Cursos matriculados', value: myEnrollments.length, tone: 'teal' },
@@ -171,7 +190,15 @@ app.get('/api/catalog', requireAuth, async (req, res) => {
     const enrollments = await all('enrollments', { studentId: req.auth.sub });
     visibleSections = sections.filter((section) => enrollments.some((item) => item.status === 'active' && item.sectionId === section._id));
   }
-  res.json({ courses, periods, teachers: users.filter((u) => u.role === 'teacher').map(safeUser), sections: await enrichSections(visibleSections) });
+  const visibleCourseIds = new Set(visibleSections.map((section) => section.courseId));
+  const visibleTeacherIds = new Set(visibleSections.map((section) => section.teacherId));
+  const visiblePeriodIds = new Set(visibleSections.map((section) => section.periodId));
+  res.json({
+    courses: req.auth.role === 'admin' ? courses : courses.filter((course) => visibleCourseIds.has(course._id)),
+    periods: req.auth.role === 'admin' ? periods : periods.filter((period) => visiblePeriodIds.has(period._id)),
+    teachers: users.filter((user) => user.role === 'teacher' && (req.auth.role === 'admin' || visibleTeacherIds.has(user._id))).map(safeUser),
+    sections: await enrichSections(visibleSections)
+  });
 });
 
 app.post('/api/courses', requireAuth, allowRoles('admin'), validate(z.object({ name: z.string().min(3), credits: z.coerce.number().min(1).max(10), hours: z.coerce.number().min(1).max(20) })), async (req, res) => {
@@ -257,8 +284,20 @@ app.get('/api/sections/:id/workspace', requireAuth, async (req, res) => {
     all('users'), all('enrollments', { sectionId: section._id }), all('sessions', { sectionId: section._id }), all('attendance'), all('evaluations', { sectionId: section._id }), all('grades')
   ]);
   const studentIds = enrollments.filter((e) => e.status === 'active').map((e) => e.studentId);
+  const enrichedSection = (await enrichSections([section]))[0];
+  if (req.auth.role === 'student') {
+    const { enrolled: _enrolled, ...studentSection } = enrichedSection;
+    return res.json({
+      section: studentSection,
+      students: users.filter((user) => user._id === req.auth.sub).map(safeUser),
+      sessions,
+      attendance: attendance.filter((record) => record.studentId === req.auth.sub && sessions.some((session) => session._id === record.sessionId)),
+      evaluations,
+      grades: grades.filter((grade) => grade.studentId === req.auth.sub && evaluations.some((evaluation) => evaluation._id === grade.evaluationId))
+    });
+  }
   res.json({
-    section: (await enrichSections([section]))[0],
+    section: enrichedSection,
     students: users.filter((u) => studentIds.includes(u._id)).map(safeUser),
     sessions,
     attendance: attendance.filter((a) => sessions.some((s) => s._id === a.sessionId)),
@@ -339,6 +378,7 @@ app.delete('/api/sessions/:id', requireAuth, allowRoles('admin', 'teacher'), asy
 app.put('/api/sessions/:id/attendance', requireAuth, allowRoles('admin', 'teacher'), validate(z.object({ records: z.array(z.object({ studentId: z.string(), status: z.enum(['present', 'late', 'absent', 'justified']) })) })), async (req, res) => {
   const session = await one('sessions', { _id: req.params.id });
   if (!session || !(await assertSectionAccess(req, res, session.sectionId))) return;
+  if (!(await assertActiveSectionStudents(res, session.sectionId, req.validated.records))) return;
   const saved = await Promise.all(req.validated.records.map((record) => upsert('attendance', { sessionId: session._id, studentId: record.studentId }, { status: record.status })));
   res.json(saved);
 });
@@ -370,6 +410,7 @@ app.delete('/api/evaluations/:id', requireAuth, allowRoles('admin', 'teacher'), 
 app.put('/api/evaluations/:id/grades', requireAuth, allowRoles('admin', 'teacher'), validate(z.object({ records: z.array(z.object({ studentId: z.string(), score: z.coerce.number().min(0).max(20) })) })), async (req, res) => {
   const evaluation = await one('evaluations', { _id: req.params.id });
   if (!evaluation || !(await assertSectionAccess(req, res, evaluation.sectionId))) return;
+  if (!(await assertActiveSectionStudents(res, evaluation.sectionId, req.validated.records))) return;
   const saved = await Promise.all(req.validated.records.map((record) => upsert('grades', { evaluationId: evaluation._id, studentId: record.studentId }, { score: record.score })));
   await create('audit', { actorId: req.auth.sub, action: 'UPDATE_GRADES', targetId: evaluation._id, at: new Date().toISOString() });
   res.json(saved);
@@ -430,7 +471,7 @@ app.get('/api/student/progress', requireAuth, allowRoles('student'), async (req,
   });
 });
 
-app.get('/api/reports/academic', requireAuth, async (req, res) => {
+app.get('/api/reports/academic', requireAuth, allowRoles('admin', 'student'), async (req, res) => {
   const targetId = req.auth.role === 'student' ? req.auth.sub : req.query.studentId;
   if (!targetId) return res.status(400).json({ message: 'Selecciona un estudiante.' });
   const [student, enrollments, sections, courses, evaluations, grades, sessions, attendance] = await Promise.all([

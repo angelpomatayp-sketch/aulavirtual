@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { one } from './store.js';
 
 const cookieName = 'academia_session';
 
@@ -19,11 +20,15 @@ export function clearSessionCookie(res) {
   res.clearCookie(cookieName);
 }
 
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
   const token = req.cookies?.[cookieName] || req.headers.authorization?.replace(/^Bearer\s+/i, '');
   if (!token) return res.status(401).json({ message: 'Debes iniciar sesión.' });
   try {
-    req.auth = jwt.verify(token, process.env.JWT_SECRET || 'dev-only-secret');
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-only-secret');
+    const user = await one('users', { _id: payload.sub });
+    if (!user || user.status !== 'active') return res.status(401).json({ message: 'La cuenta no está disponible.' });
+    req.auth = { ...payload, role: user.role };
+    req.currentUser = user;
     next();
   } catch {
     return res.status(401).json({ message: 'La sesión expiró. Inicia sesión nuevamente.' });
