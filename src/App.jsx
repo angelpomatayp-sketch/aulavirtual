@@ -8,10 +8,14 @@ import {
 const roleNames = { admin: 'Administrador', teacher: 'Docente', student: 'Estudiante' };
 const statusNames = { present: 'Presente', late: 'Tardanza', absent: 'Ausente', justified: 'Justificado' };
 const demoAccounts = [
-  { role: 'Administrador', email: 'admin@demo.edu.pe', icon: ShieldCheck },
-  { role: 'Docente', email: 'docente@demo.edu.pe', icon: BookOpen },
-  { role: 'Estudiante', email: 'estudiante@demo.edu.pe', icon: GraduationCap }
+  { role: 'Administrador', email: 'admin@continental.edu.pe', icon: ShieldCheck },
+  { role: 'Docente', email: 'docente@continental.edu.pe', icon: BookOpen },
+  { role: 'Estudiante', email: 'estudiante@continental.edu.pe', icon: GraduationCap }
 ];
+
+function Brand({ light = false, mobile = false }) {
+  return <div className={`brand ${light ? 'light' : ''} ${mobile ? 'mobile-brand' : ''}`}><img className="brand-logo" src="/uc-logo.svg" alt="Universidad Continental" /><span className="brand-product">Aula académica</span></div>;
+}
 
 async function api(path, options = {}) {
   const token = localStorage.getItem('academia_token');
@@ -29,7 +33,7 @@ async function api(path, options = {}) {
 }
 
 function Login({ onLogin }) {
-  const [email, setEmail] = useState('admin@demo.edu.pe');
+  const [email, setEmail] = useState('admin@continental.edu.pe');
   const [password, setPassword] = useState('Demo2026!');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,7 +49,7 @@ function Login({ onLogin }) {
 
   return <main className="login-page">
     <section className="login-story">
-      <div className="brand light"><span className="brand-mark"><GraduationCap size={25} /></span><span>Aula Norte</span></div>
+      <Brand light />
       <div className="story-copy">
         <span className="eyebrow"><Sparkles size={15} /> Gestión académica, sin fricción</span>
         <h1>Todo el ciclo académico en un solo lugar.</h1>
@@ -54,11 +58,11 @@ function Login({ onLogin }) {
     </section>
     <section className="login-panel">
       <form className="login-card" onSubmit={submit}>
-        <div className="mobile-brand brand"><span className="brand-mark"><GraduationCap size={22} /></span><span>Aula Norte</span></div>
+        <Brand mobile />
         <span className="overline">Bienvenido</span>
         <h2>Ingresa a tu espacio</h2>
         <p className="muted">Usa tu correo institucional para continuar.</p>
-        <label>Correo institucional<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+        <label>Correo institucional<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@continental.edu.pe" pattern=".+@continental\.edu\.pe" title="Usa tu correo @continental.edu.pe" required /></label>
         <label>Contraseña<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
         {error && <p className="form-error">{error}</p>}
         <button className="button primary wide" disabled={loading}>{loading ? <LoaderCircle className="spin" size={18} /> : 'Iniciar sesión'} {!loading && <ChevronRight size={18} />}</button>
@@ -88,7 +92,7 @@ function Shell({ user, page, setPage, onLogout, children }) {
   const title = items.find(([id]) => id === page)?.[1] || 'Resumen';
   return <div className="app-shell">
     <aside className={`sidebar ${open ? 'open' : ''}`}>
-      <div className="brand"><span className="brand-mark"><GraduationCap size={22} /></span><span>Aula Norte</span></div>
+      <Brand />
       <button className="close-menu" onClick={() => setOpen(false)}><X /></button>
       <nav>{items.map(([id, label, Icon]) => <button key={id} className={page === id ? 'active' : ''} onClick={() => { setPage(id); setOpen(false); }}><Icon size={19} /><span>{label}</span></button>)}</nav>
       <div className="sidebar-note"><ShieldCheck size={18} /><div><strong>Entorno seguro</strong><span>Sesión protegida por rol</span></div></div>
@@ -143,7 +147,7 @@ function UsersPage() {
       <div className="table-wrap"><table><thead><tr><th>Persona</th><th>Código</th><th>Perfil</th><th>Estado</th><th /></tr></thead><tbody>{filtered.map((user) => <tr key={user._id}><td><div className="person"><span className="mini-avatar">{user.names[0]}{user.lastNames[0]}</span><div><strong>{user.names} {user.lastNames}</strong><span>{user.email}</span></div></div></td><td>{user.code}</td><td><span className="tag">{roleNames[user.role]}</span></td><td><span className={`status ${user.status}`}>{user.status === 'active' ? 'Activo' : 'Inactivo'}</span></td><td><div className="row-actions"><button className="text-button" onClick={() => setModal({ type: 'view', user })}>Ver</button><button className="text-button" onClick={() => setModal({ type: 'edit', user })}>Editar</button><button className="text-button danger" onClick={() => setModal({ type: 'status', user })}>{user.status === 'active' ? 'Desactivar' : 'Activar'}</button></div></td></tr>)}</tbody></table></div>
     </section>
     {modal?.type === 'view' && <Modal title="Detalle de la persona" onClose={() => setModal(null)}><div className="detail-list"><div><span>Nombre</span><strong>{modal.user.names} {modal.user.lastNames}</strong></div><div><span>Correo</span><strong>{modal.user.email}</strong></div><div><span>Código</span><strong>{modal.user.code}</strong></div><div><span>Perfil</span><strong>{roleNames[modal.user.role]}</strong></div><div><span>Estado</span><strong>{modal.user.status === 'active' ? 'Activo' : 'Inactivo'}</strong></div></div><div className="modal-actions"><button className="button primary" onClick={() => setModal(null)}>Cerrar</button></div></Modal>}
-    {(modal?.type === 'create' || modal?.type === 'edit') && <Modal title={modal.type === 'create' ? 'Registrar persona' : 'Editar persona'} onClose={() => setModal(null)}><form className="form-grid" onSubmit={saveUser}><label>Nombres<input name="names" defaultValue={modal.user?.names} required /></label><label>Apellidos<input name="lastNames" defaultValue={modal.user?.lastNames} required /></label>{modal.type === 'create' && <label>Correo<input name="email" type="email" required /></label>}<label>Código<input name="code" defaultValue={modal.user?.code} required /></label>{modal.type === 'create' && <label className="full">Perfil<select name="role"><option value="student">Estudiante</option><option value="teacher">Docente</option><option value="admin">Administrador</option></select></label>}{error && <p className="form-error full">{error}</p>}<div className="modal-actions full"><button type="button" className="button ghost" onClick={() => setModal(null)}>Cancelar</button><button className="button primary">Guardar persona</button></div></form></Modal>}
+    {(modal?.type === 'create' || modal?.type === 'edit') && <Modal title={modal.type === 'create' ? 'Registrar persona' : 'Editar persona'} onClose={() => setModal(null)}><form className="form-grid" onSubmit={saveUser}><label>Nombres<input name="names" defaultValue={modal.user?.names} required /></label><label>Apellidos<input name="lastNames" defaultValue={modal.user?.lastNames} required /></label>{modal.type === 'create' && <label>Correo institucional<input name="email" type="email" placeholder="usuario@continental.edu.pe" pattern=".+@continental\.edu\.pe" title="Usa un correo @continental.edu.pe" required /></label>}<label>Código<input name="code" defaultValue={modal.user?.code} required /></label>{modal.type === 'create' && <label className="full">Perfil<select name="role"><option value="student">Estudiante</option><option value="teacher">Docente</option><option value="admin">Administrador</option></select></label>}{error && <p className="form-error full">{error}</p>}<div className="modal-actions full"><button type="button" className="button ghost" onClick={() => setModal(null)}>Cancelar</button><button className="button primary">Guardar persona</button></div></form></Modal>}
     {modal?.type === 'status' && <Modal title={modal.user.status === 'active' ? 'Desactivar cuenta' : 'Activar cuenta'} onClose={() => setModal(null)}><p>¿Confirmas el cambio de estado para <strong>{modal.user.names} {modal.user.lastNames}</strong>?</p><div className="modal-actions"><button className="button ghost" onClick={() => setModal(null)}>Cancelar</button><button className="button primary" onClick={confirmStatus}>Confirmar</button></div></Modal>}
   </>;
 }

@@ -3,13 +3,13 @@ import bcrypt from 'bcryptjs';
 export async function createDemoData() {
   const passwordHash = await bcrypt.hash('Demo2026!', 10);
   const users = [
-    { _id: 'u-admin', names: 'María Elena', lastNames: 'Torres Salas', email: 'admin@demo.edu.pe', role: 'admin', status: 'active', passwordHash, code: 'ADM001' },
-    { _id: 'u-teacher-1', names: 'Carlos', lastNames: 'Mendoza Ruiz', email: 'docente@demo.edu.pe', role: 'teacher', status: 'active', passwordHash, code: 'DOC001', specialty: 'Ingeniería de software' },
-    { _id: 'u-teacher-2', names: 'Ana Lucía', lastNames: 'Quispe Vera', email: 'ana.quispe@demo.edu.pe', role: 'teacher', status: 'active', passwordHash, code: 'DOC002', specialty: 'Base de datos' },
-    { _id: 'u-student-1', names: 'Diego', lastNames: 'Flores Paredes', email: 'estudiante@demo.edu.pe', role: 'student', status: 'active', passwordHash, code: '2026001' },
-    { _id: 'u-student-2', names: 'Valeria', lastNames: 'Condori Ramos', email: 'valeria.condori@demo.edu.pe', role: 'student', status: 'active', passwordHash, code: '2026002' },
-    { _id: 'u-student-3', names: 'Mateo', lastNames: 'Chávez Núñez', email: 'mateo.chavez@demo.edu.pe', role: 'student', status: 'active', passwordHash, code: '2026003' },
-    { _id: 'u-student-4', names: 'Luciana', lastNames: 'Rojas Soto', email: 'luciana.rojas@demo.edu.pe', role: 'student', status: 'active', passwordHash, code: '2026004' }
+    { _id: 'u-admin', names: 'María Elena', lastNames: 'Torres Salas', email: 'admin@continental.edu.pe', role: 'admin', status: 'active', passwordHash, code: 'ADM001' },
+    { _id: 'u-teacher-1', names: 'Carlos', lastNames: 'Mendoza Ruiz', email: 'docente@continental.edu.pe', role: 'teacher', status: 'active', passwordHash, code: 'DOC001', specialty: 'Ingeniería de software' },
+    { _id: 'u-teacher-2', names: 'Ana Lucía', lastNames: 'Quispe Vera', email: 'ana.quispe@continental.edu.pe', role: 'teacher', status: 'active', passwordHash, code: 'DOC002', specialty: 'Base de datos' },
+    { _id: 'u-student-1', names: 'Diego', lastNames: 'Flores Paredes', email: 'estudiante@continental.edu.pe', role: 'student', status: 'active', passwordHash, code: '2026001' },
+    { _id: 'u-student-2', names: 'Valeria', lastNames: 'Condori Ramos', email: 'valeria.condori@continental.edu.pe', role: 'student', status: 'active', passwordHash, code: '2026002' },
+    { _id: 'u-student-3', names: 'Mateo', lastNames: 'Chávez Núñez', email: 'mateo.chavez@continental.edu.pe', role: 'student', status: 'active', passwordHash, code: '2026003' },
+    { _id: 'u-student-4', names: 'Luciana', lastNames: 'Rojas Soto', email: 'luciana.rojas@continental.edu.pe', role: 'student', status: 'active', passwordHash, code: '2026004' }
   ];
 
   return {

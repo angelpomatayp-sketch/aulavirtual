@@ -20,6 +20,7 @@ app.use(cookieParser());
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
 const safeUser = ({ passwordHash, ...user }) => user;
 const fullName = (user) => `${user?.names || ''} ${user?.lastNames || ''}`.trim();
+const institutionalEmail = z.string().email().refine((email) => email.toLowerCase().endsWith('@continental.edu.pe'), { message: 'Usa un correo @continental.edu.pe.' });
 
 async function nextCourseCode() {
   const courses = await all('courses');
@@ -75,7 +76,7 @@ async function assertActiveSectionStudents(res, sectionId, records) {
 
 app.get('/api/health', async (_req, res) => res.json({ status: 'ok', dataMode: storeMode(), timestamp: new Date().toISOString() }));
 
-app.post('/api/auth/login', loginLimiter, validate(z.object({ email: z.string().email(), password: z.string().min(6) })), async (req, res) => {
+app.post('/api/auth/login', loginLimiter, validate(z.object({ email: institutionalEmail, password: z.string().min(6) })), async (req, res) => {
   const user = await one('users', { email: req.validated.email.toLowerCase() });
   if (!user || user.status !== 'active' || !(await bcrypt.compare(req.validated.password, user.passwordHash))) {
     return res.status(401).json({ message: 'Correo o contraseña incorrectos.' });
@@ -166,7 +167,7 @@ app.get('/api/users', requireAuth, allowRoles('admin'), async (req, res) => {
 });
 
 app.post('/api/users', requireAuth, allowRoles('admin'), validate(z.object({
-  names: z.string().min(2), lastNames: z.string().min(2), email: z.string().email(), role: z.enum(['admin', 'teacher', 'student']), code: z.string().min(2)
+  names: z.string().min(2), lastNames: z.string().min(2), email: institutionalEmail, role: z.enum(['admin', 'teacher', 'student']), code: z.string().min(2)
 })), async (req, res) => {
   if (await one('users', { email: req.validated.email.toLowerCase() })) return res.status(409).json({ message: 'El correo ya está registrado.' });
   const user = await create('users', { ...req.validated, email: req.validated.email.toLowerCase(), status: 'active', passwordHash: await bcrypt.hash('Demo2026!', 10) });
@@ -497,7 +498,7 @@ app.get('/api/reports/academic', requireAuth, allowRoles('admin', 'student'), as
     const headers = ['Curso', 'Sección', 'Promedio', 'Asistencia'];
     const xmlRows = [headers, ...rows.map((row) => headers.map((header) => row[header]))]
       .map((row, index) => `<Row>${row.map((value) => `<Cell${index === 0 ? ' ss:StyleID="Header"' : ''}><Data ss:Type="String">${xmlEscape(value)}</Data></Cell>`).join('')}</Row>`).join('');
-    const workbook = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#0F5958" ss:Pattern="Solid"/></Style></Styles><Worksheet ss:Name="Resumen académico"><Table>${xmlRows}</Table></Worksheet></Workbook>`;
+    const workbook = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#6802C1" ss:Pattern="Solid"/></Style></Styles><Worksheet ss:Name="Resumen académico"><Table>${xmlRows}</Table></Worksheet></Workbook>`;
     res.setHeader('Content-Disposition', `attachment; filename="reporte-${student.code}.xls"`);
     return res.type('application/vnd.ms-excel').send(workbook);
   }
@@ -506,12 +507,12 @@ app.get('/api/reports/academic', requireAuth, allowRoles('admin', 'student'), as
     res.type('application/pdf');
     const pdf = new PDFDocument({ margin: 48, size: 'LETTER' });
     pdf.pipe(res);
-    pdf.fontSize(20).fillColor('#123c3d').text('Reporte académico');
+    pdf.fontSize(20).fillColor('#6802c1').text('Reporte académico');
     pdf.moveDown(0.5).fontSize(11).fillColor('#333').text(`${fullName(student)} · ${student.code}`);
     pdf.text('Periodo 2026-I');
     pdf.moveDown();
     rows.forEach((row) => {
-      pdf.fontSize(12).fillColor('#123c3d').text(`${row.Curso} · Sección ${row.Sección}`);
+      pdf.fontSize(12).fillColor('#4b008c').text(`${row.Curso} · Sección ${row.Sección}`);
       pdf.fontSize(10).fillColor('#444').text(`Promedio: ${row.Promedio}    Asistencia: ${row.Asistencia}`);
       pdf.moveDown(0.7);
     });

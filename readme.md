@@ -1,4 +1,4 @@
-# Aula Norte
+# Aula Continental
 
 MVP de gestión académica basado en el plan de tesis `PA1_Limachi (1).docx`. Integra autenticación por roles, usuarios, cursos, matrículas, asistencia, calificaciones y reportes.
 
@@ -6,11 +6,13 @@ MVP de gestión académica basado en el plan de tesis `PA1_Limachi (1).docx`. In
 
 | Perfil | Correo | Contraseña |
 | --- | --- | --- |
-| Administrador | `admin@demo.edu.pe` | `Demo2026!` |
-| Docente | `docente@demo.edu.pe` | `Demo2026!` |
-| Estudiante | `estudiante@demo.edu.pe` | `Demo2026!` |
+| Administrador | `admin@continental.edu.pe` | `Demo2026!` |
+| Docente | `docente@continental.edu.pe` | `Demo2026!` |
+| Estudiante | `estudiante@continental.edu.pe` | `Demo2026!` |
 
 Los datos son ficticios y se restauran al reiniciar cuando se utiliza `DATA_MODE=memory`.
+
+Todos los usuarios usan el dominio institucional `@continental.edu.pe`. La interfaz incorpora el logotipo oficial de la Universidad Continental, almacenado localmente en `public/uc-logo.svg`, y su color morado institucional `#6802C1`.
 
 El conjunto inicial incluye 7 usuarios (1 administrador, 2 docentes y 4 estudiantes), 4 cursos, 3 secciones, 10 matrículas, sesiones, asistencias, evaluaciones y calificaciones. Todas las cuentas demo usan la contraseña `Demo2026!`.
 
@@ -100,7 +102,7 @@ Este es un MVP para demostración académica. No debe cargarse con información 
 
 
 
-admin@demo.edu.pe
-docente@demo.edu.pe
-estudiante@demo.edu.pe
+admin@continental.edu.pe
+docente@continental.edu.pe
+estudiante@continental.edu.pe
 Contraseña: Demo2026!

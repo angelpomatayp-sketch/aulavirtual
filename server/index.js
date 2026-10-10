@@ -6,5 +6,5 @@ const port = Number(process.env.PORT || 3000);
 
 await initStore();
 app.listen(port, '0.0.0.0', () => {
-  console.log(`Aula Norte disponible en http://localhost:${port}`);
+  console.log(`Aula Continental disponible en http://localhost:${port}`);
 });

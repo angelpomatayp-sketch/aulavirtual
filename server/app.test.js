@@ -6,12 +6,12 @@ import { closeStore, initStore } from './store.js';
 beforeAll(async () => initStore({ reset: true }));
 afterAll(async () => closeStore());
 
-async function login(email = 'admin@demo.edu.pe') {
+async function login(email = 'admin@continental.edu.pe') {
   const response = await request(app).post('/api/auth/login').send({ email, password: 'Demo2026!' });
   return { token: response.body.token, response };
 }
 
-describe('Aula Norte API', () => {
+describe('Aula Continental API', () => {
   it('informa que el servicio está disponible', async () => {
     const response = await request(app).get('/api/health');
     expect(response.status).toBe(200);
@@ -26,18 +26,27 @@ describe('Aula Norte API', () => {
   });
 
   it('rechaza credenciales incorrectas', async () => {
-    const response = await request(app).post('/api/auth/login').send({ email: 'admin@demo.edu.pe', password: 'incorrecta' });
+    const response = await request(app).post('/api/auth/login').send({ email: 'admin@continental.edu.pe', password: 'incorrecta' });
     expect(response.status).toBe(401);
   });
 
+  it('exige el dominio institucional al registrar usuarios', async () => {
+    const { token } = await login();
+    const response = await request(app).post('/api/users').set('Authorization', `Bearer ${token}`).send({
+      names: 'Usuario', lastNames: 'Externo', email: 'usuario@gmail.com', role: 'student', code: '2026999'
+    });
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain('@continental.edu.pe');
+  });
+
   it('protege el directorio de usuarios por rol', async () => {
-    const { token } = await login('estudiante@demo.edu.pe');
+    const { token } = await login('estudiante@continental.edu.pe');
     const response = await request(app).get('/api/users').set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(403);
   });
 
   it('limita el catálogo del docente a sus cursos, secciones y perfil', async () => {
-    const { token } = await login('docente@demo.edu.pe');
+    const { token } = await login('docente@continental.edu.pe');
     const response = await request(app).get('/api/catalog').set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
     expect(response.body.sections.every((section) => section.teacherId === 'u-teacher-1')).toBe(true);
@@ -46,7 +55,7 @@ describe('Aula Norte API', () => {
   });
 
   it('devuelve al estudiante únicamente sus datos dentro del espacio de una sección', async () => {
-    const { token } = await login('estudiante@demo.edu.pe');
+    const { token } = await login('estudiante@continental.edu.pe');
     const response = await request(app).get('/api/sections/s-prog-a/workspace').set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
     expect(response.body.students.map((student) => student._id)).toEqual(['u-student-1']);
@@ -56,7 +65,7 @@ describe('Aula Norte API', () => {
   });
 
   it('impide al docente acceder a reportes globales y secciones ajenas', async () => {
-    const { token } = await login('docente@demo.edu.pe');
+    const { token } = await login('docente@continental.edu.pe');
     const report = await request(app).get('/api/reports/academic?studentId=u-student-3').set('Authorization', `Bearer ${token}`);
     const workspace = await request(app).get('/api/sections/s-db-a/workspace').set('Authorization', `Bearer ${token}`);
     expect(report.status).toBe(403);
@@ -89,13 +98,13 @@ describe('Aula Norte API', () => {
   });
 
   it('impide registrar notas fuera de la escala de 0 a 20', async () => {
-    const { token } = await login('docente@demo.edu.pe');
+    const { token } = await login('docente@continental.edu.pe');
     const response = await request(app).put('/api/evaluations/ev-1/grades').set('Authorization', `Bearer ${token}`).send({ records: [{ studentId: 'u-student-1', score: 21 }] });
     expect(response.status).toBe(400);
   });
 
   it('rechaza notas y asistencias de personas sin matrícula activa en la sección', async () => {
-    const { token } = await login('docente@demo.edu.pe');
+    const { token } = await login('docente@continental.edu.pe');
     const grades = await request(app).put('/api/evaluations/ev-1/grades').set('Authorization', `Bearer ${token}`).send({ records: [{ studentId: 'u-teacher-2', score: 15 }] });
     const attendance = await request(app).put('/api/sessions/ses-1/attendance').set('Authorization', `Bearer ${token}`).send({ records: [{ studentId: 'u-teacher-2', status: 'present' }] });
     expect(grades.status).toBe(400);
@@ -103,7 +112,7 @@ describe('Aula Norte API', () => {
   });
 
   it('calcula el consolidado de notas para el docente', async () => {
-    const { token } = await login('docente@demo.edu.pe');
+    const { token } = await login('docente@continental.edu.pe');
     const response = await request(app).get('/api/sections/s-prog-a/grade-summary').set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
     expect(response.body.stats.evaluatedWeight).toBe(60);
@@ -111,21 +120,21 @@ describe('Aula Norte API', () => {
   });
 
   it('genera el resumen académico de un estudiante', async () => {
-    const { token } = await login('estudiante@demo.edu.pe');
+    const { token } = await login('estudiante@continental.edu.pe');
     const response = await request(app).get('/api/reports/academic').set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
     expect(response.body.rows.length).toBeGreaterThan(0);
   });
 
   it('ignora un identificador ajeno en el reporte solicitado por un estudiante', async () => {
-    const { token } = await login('estudiante@demo.edu.pe');
+    const { token } = await login('estudiante@continental.edu.pe');
     const response = await request(app).get('/api/reports/academic?studentId=u-student-2').set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
     expect(response.body.student._id).toBe('u-student-1');
   });
 
   it('alinea el promedio del resumen con el avance ponderado del estudiante', async () => {
-    const { token } = await login('estudiante@demo.edu.pe');
+    const { token } = await login('estudiante@continental.edu.pe');
     const response = await request(app).get('/api/dashboard').set('Authorization', `Bearer ${token}`);
     const average = response.body.stats.find((item) => item.label === 'Promedio actual');
     expect(response.status).toBe(200);
@@ -133,7 +142,7 @@ describe('Aula Norte API', () => {
   });
 
   it('invalida una sesión existente cuando la cuenta es desactivada', async () => {
-    const { token: studentToken } = await login('luciana.rojas@demo.edu.pe');
+    const { token: studentToken } = await login('luciana.rojas@continental.edu.pe');
     const { token: adminToken } = await login();
     await request(app).patch('/api/users/u-student-4').set('Authorization', `Bearer ${adminToken}`).send({ status: 'inactive' });
     const response = await request(app).get('/api/dashboard').set('Authorization', `Bearer ${studentToken}`);
@@ -142,7 +151,7 @@ describe('Aula Norte API', () => {
   });
 
   it('muestra el avance privado y detallado del estudiante autenticado', async () => {
-    const { token } = await login('estudiante@demo.edu.pe');
+    const { token } = await login('estudiante@continental.edu.pe');
     const response = await request(app).get('/api/student/progress').set('Authorization', `Bearer ${token}`);
     const programming = response.body.courses.find((item) => item.course.name === 'Programación Web');
     expect(response.status).toBe(200);
@@ -151,7 +160,7 @@ describe('Aula Norte API', () => {
   });
 
   it('exporta el reporte en PDF y formato Excel', async () => {
-    const { token } = await login('estudiante@demo.edu.pe');
+    const { token } = await login('estudiante@continental.edu.pe');
     const pdf = await request(app).get('/api/reports/academic?format=pdf').set('Authorization', `Bearer ${token}`);
     const excel = await request(app).get('/api/reports/academic?format=xls').set('Authorization', `Bearer ${token}`);
     expect(pdf.status).toBe(200);

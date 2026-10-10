@@ -23,9 +23,18 @@ export async function initStore({ reset = false } = {}) {
     }
     if (reset) await Promise.all(collections.map((name) => models[name].deleteMany({})));
     if ((await models.users.countDocuments()) === 0) await seedStore();
+    else await migrateInstitutionalEmails();
   } else {
     if (reset || !memory.users) memory = await createDemoData();
   }
+}
+
+async function migrateInstitutionalEmails() {
+  const users = (await models.users.find({}).lean()).filter((user) => !/@continental\.edu\.pe$/i.test(user.email || ''));
+  await Promise.all(users.map((user) => {
+    const localPart = String(user.email || user.code || user._id).split('@')[0].toLowerCase();
+    return models.users.findByIdAndUpdate(user._id, { $set: { email: `${localPart}@continental.edu.pe` } });
+  }));
 }
 
 export async function seedStore() {
