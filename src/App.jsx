@@ -7,12 +7,6 @@ import {
 
 const roleNames = { admin: 'Administrador', teacher: 'Docente', student: 'Estudiante' };
 const statusNames = { present: 'Presente', late: 'Tardanza', absent: 'Ausente', justified: 'Justificado' };
-const demoAccounts = [
-  { role: 'Administrador', email: 'admin@continental.edu.pe', icon: ShieldCheck },
-  { role: 'Docente', email: 'docente@continental.edu.pe', icon: BookOpen },
-  { role: 'Estudiante', email: 'estudiante@continental.edu.pe', icon: GraduationCap }
-];
-
 function Brand({ light = false, mobile = false }) {
   return <div className={`brand ${light ? 'light' : ''} ${mobile ? 'mobile-brand' : ''}`}><img className="brand-logo" src="/uc-logo.svg" alt="Universidad Continental" /><span className="brand-product">Aula académica</span></div>;
 }
@@ -66,12 +60,6 @@ function Login({ onLogin }) {
         <label>Contraseña<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
         {error && <p className="form-error">{error}</p>}
         <button className="button primary wide" disabled={loading}>{loading ? <LoaderCircle className="spin" size={18} /> : 'Iniciar sesión'} {!loading && <ChevronRight size={18} />}</button>
-        <div className="demo-separator"><span>Accesos para demostración</span></div>
-        <div className="demo-accounts">
-          {demoAccounts.map(({ role, email: account, icon: Icon }) => <button type="button" key={account} onClick={() => { setEmail(account); setPassword('Demo2026!'); }}>
-            <Icon size={17} /><span><strong>{role}</strong><small>{account}</small></span>
-          </button>)}
-        </div>
       </form>
     </section>
   </main>;

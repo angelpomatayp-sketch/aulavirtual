@@ -57,14 +57,6 @@ input:focus, select:focus { border-color: #6802c1; box-shadow: 0 0 0 3px rgba(10
 .button.ghost { color: var(--ink); background: #edf2ef; }
 .button.wide { width: 100%; }
 .form-error { margin: -7px 0 14px !important; color: var(--danger); font-size: 13px; }
-.demo-separator { display: flex; align-items: center; gap: 12px; margin: 27px 0 15px; color: #8a9997; font-size: 11px; text-transform: uppercase; letter-spacing: .8px; }
-.demo-separator::before, .demo-separator::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-.demo-accounts { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
-.demo-accounts button { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; color: var(--teal); background: white; text-align: left; }
-.demo-accounts span { display: grid; min-width: 0; }
-.demo-accounts strong { color: var(--ink); font-size: 11px; }
-.demo-accounts small { overflow: hidden; color: var(--muted); font-size: 8px; text-overflow: ellipsis; }
-
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 245px 1fr; }
 .sidebar { position: sticky; z-index: 20; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 28px 18px 20px; border-right: 1px solid #e5dfeb; background: #fbf9fd; }
 .sidebar .brand { padding: 0 10px 28px; }
@@ -200,5 +192,5 @@ input:focus, select:focus { border-color: #6802c1; box-shadow: 0 0 0 3px rgba(10
   .app-shell { display: block; }.sidebar { position: fixed; left: -270px; width: 250px; transition: left .25s; }.sidebar.open { left: 0; box-shadow: 20px 0 70px rgba(0,0,0,.18); }.scrim { position: fixed; z-index: 15; inset: 0; border: 0; background: rgba(15,33,33,.4); }.close-menu { display: block; position: absolute; right: 12px; top: 34px; border: 0; background: none; color: var(--muted); }.menu-button { display: grid; place-items: center; border: 0; background: none; color: var(--teal); }.topbar { min-height: 76px; padding: 12px 18px; }.topbar > div:first-of-type { margin-right: auto; }.topbar h1 { font-size: 17px; }.user-chip > div { display: none; }.content { padding: 28px 18px 60px; }.page-intro { align-items: flex-start; flex-direction: column; }.page-intro h2 { font-size: 26px; }.stat-grid { grid-template-columns: 1fr 1fr; }.panel { padding: 17px; }.course-row { grid-template-columns: 45px 1fr; }.course-row .pill { display: none; }.card-grid { grid-template-columns: 1fr; }.form-grid { display: block; }.roster > div { align-items: flex-start; flex-direction: column; }.attendance-options { width: 100%; overflow-x: auto; }.grade-grid { grid-template-columns: 1fr; }.summary-columns { grid-template-columns: 1fr; }.class-heading, .subheading { align-items: flex-start; flex-direction: column; }.course-progress-metrics { grid-template-columns: 1fr; }.enrollment-filters { grid-template-columns: 1fr; }.enrollment-filters .search { grid-column: auto; }.enrollment-filters .text-button { justify-self: start; }
 }
 @media (max-width: 440px) {
-  .demo-accounts { grid-template-columns: 1fr; }.stat-grid { grid-template-columns: 1fr; }.user-chip .avatar { width: 35px; height: 35px; }.action-group { width: 100%; }.action-group .button { flex: 1; }
+  .stat-grid { grid-template-columns: 1fr; }.user-chip .avatar { width: 35px; height: 35px; }.action-group { width: 100%; }.action-group .button { flex: 1; }
 }
