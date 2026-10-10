@@ -113,7 +113,7 @@ app.get('/api/dashboard', requireAuth, async (req, res) => {
     return res.json({
       stats: [
         { label: 'Mis secciones', value: mine.length, tone: 'teal' },
-        { label: 'Estudiantes', value: new Set(enrollments.filter((e) => mineIds.includes(e.sectionId)).map((e) => e.studentId)).size, tone: 'blue' },
+        { label: 'Estudiantes', value: new Set(enrollments.filter((e) => e.status === 'active' && mineIds.includes(e.sectionId)).map((e) => e.studentId)).size, tone: 'blue' },
         { label: 'Sesiones', value: sessions.filter((s) => mineIds.includes(s.sectionId)).length, tone: 'amber' },
         { label: 'Evaluaciones', value: evaluations.filter((e) => mineIds.includes(e.sectionId)).length, tone: 'violet' }
       ],
@@ -169,7 +169,7 @@ app.get('/api/catalog', requireAuth, async (req, res) => {
   if (req.auth.role === 'teacher') visibleSections = sections.filter((section) => section.teacherId === req.auth.sub);
   if (req.auth.role === 'student') {
     const enrollments = await all('enrollments', { studentId: req.auth.sub });
-    visibleSections = sections.filter((section) => enrollments.some((item) => item.sectionId === section._id));
+    visibleSections = sections.filter((section) => enrollments.some((item) => item.status === 'active' && item.sectionId === section._id));
   }
   res.json({ courses, periods, teachers: users.filter((u) => u.role === 'teacher').map(safeUser), sections: await enrichSections(visibleSections) });
 });
@@ -219,18 +219,31 @@ app.get('/api/enrollments', requireAuth, allowRoles('admin'), async (_req, res) 
 });
 
 app.post('/api/enrollments', requireAuth, allowRoles('admin'), validate(z.object({ studentId: z.string(), sectionId: z.string() })), async (req, res) => {
-  if (await one('enrollments', req.validated)) return res.status(409).json({ message: 'El estudiante ya está matriculado en esta sección.' });
+  const existing = await one('enrollments', req.validated);
+  if (existing) return res.status(409).json({ message: existing.status === 'active' ? 'El estudiante ya está matriculado en esta sección.' : 'La matrícula fue retirada. Reactívala desde el historial.' });
   const section = await one('sections', { _id: req.validated.sectionId });
   if (!section) return res.status(404).json({ message: 'Sección no encontrada.' });
-  const current = await all('enrollments', { sectionId: section._id });
+  const current = (await all('enrollments', { sectionId: section._id })).filter((item) => item.status === 'active');
   if (current.length >= section.capacity) return res.status(409).json({ message: 'La sección alcanzó su capacidad.' });
   res.status(201).json(await create('enrollments', { ...req.validated, periodId: section.periodId, status: 'active', enrolledAt: new Date().toISOString().slice(0, 10) }));
 });
 
 app.delete('/api/enrollments/:id', requireAuth, allowRoles('admin'), async (req, res) => {
-  const deleted = await remove('enrollments', req.params.id);
-  if (!deleted) return res.status(404).json({ message: 'Matrícula no encontrada.' });
-  res.status(204).end();
+  const enrollment = await one('enrollments', { _id: req.params.id });
+  if (!enrollment) return res.status(404).json({ message: 'Matrícula no encontrada.' });
+  if (enrollment.status !== 'active') return res.status(409).json({ message: 'La matrícula ya está retirada.' });
+  res.json(await update('enrollments', enrollment._id, { status: 'withdrawn', withdrawnAt: new Date().toISOString().slice(0, 10) }));
+});
+
+app.patch('/api/enrollments/:id/reactivate', requireAuth, allowRoles('admin'), async (req, res) => {
+  const enrollment = await one('enrollments', { _id: req.params.id });
+  if (!enrollment) return res.status(404).json({ message: 'Matrícula no encontrada.' });
+  if (enrollment.status === 'active') return res.status(409).json({ message: 'La matrícula ya está activa.' });
+  const section = await one('sections', { _id: enrollment.sectionId });
+  if (!section) return res.status(404).json({ message: 'Sección no encontrada.' });
+  const active = (await all('enrollments', { sectionId: section._id })).filter((item) => item.status === 'active');
+  if (active.length >= section.capacity) return res.status(409).json({ message: 'La sección alcanzó su capacidad.' });
+  res.json(await update('enrollments', enrollment._id, { status: 'active', withdrawnAt: null, reactivatedAt: new Date().toISOString().slice(0, 10) }));
 });
 
 app.get('/api/sections/:id/workspace', requireAuth, async (req, res) => {
@@ -238,12 +251,12 @@ app.get('/api/sections/:id/workspace', requireAuth, async (req, res) => {
   if (!section) return;
   if (req.auth.role === 'student') {
     const enrollment = await one('enrollments', { sectionId: section._id, studentId: req.auth.sub });
-    if (!enrollment) return res.status(403).json({ message: 'No estás matriculado en esta sección.' });
+    if (!enrollment || enrollment.status !== 'active') return res.status(403).json({ message: 'No estás matriculado en esta sección.' });
   }
   const [users, enrollments, sessions, attendance, evaluations, grades] = await Promise.all([
     all('users'), all('enrollments', { sectionId: section._id }), all('sessions', { sectionId: section._id }), all('attendance'), all('evaluations', { sectionId: section._id }), all('grades')
   ]);
-  const studentIds = enrollments.map((e) => e.studentId);
+  const studentIds = enrollments.filter((e) => e.status === 'active').map((e) => e.studentId);
   res.json({
     section: (await enrichSections([section]))[0],
     students: users.filter((u) => studentIds.includes(u._id)).map(safeUser),
@@ -261,7 +274,7 @@ app.get('/api/sections/:id/grade-summary', requireAuth, allowRoles('admin', 'tea
     all('users'), all('enrollments', { sectionId: section._id }), all('evaluations', { sectionId: section._id }), all('grades'), all('sessions', { sectionId: section._id }), all('attendance')
   ]);
   const orderedEvaluations = [...evaluations].sort((a, b) => a.date.localeCompare(b.date));
-  const rows = enrollments.map((enrollment) => {
+  const rows = enrollments.filter((enrollment) => enrollment.status === 'active').map((enrollment) => {
     const student = users.find((user) => user._id === enrollment.studentId);
     const completed = orderedEvaluations
       .map((evaluation) => ({ evaluation, grade: grades.find((grade) => grade.evaluationId === evaluation._id && grade.studentId === enrollment.studentId) }))
@@ -424,7 +437,7 @@ app.get('/api/reports/academic', requireAuth, async (req, res) => {
     one('users', { _id: targetId }), all('enrollments', { studentId: targetId }), all('sections'), all('courses'), all('evaluations'), all('grades', { studentId: targetId }), all('sessions'), all('attendance', { studentId: targetId })
   ]);
   if (!student) return res.status(404).json({ message: 'Estudiante no encontrado.' });
-  const rows = enrollments.map((enrollment) => {
+  const rows = enrollments.filter((enrollment) => enrollment.status === 'active').map((enrollment) => {
     const section = sections.find((s) => s._id === enrollment.sectionId);
     const course = courses.find((c) => c._id === section?.courseId);
     const evals = evaluations.filter((e) => e.sectionId === section?._id);

@@ -42,6 +42,18 @@ describe('Aula Norte API', () => {
     expect(response.status).toBe(409);
   });
 
+  it('retira y reactiva una matrícula sin borrar su historial', async () => {
+    const { token } = await login();
+    const withdrawn = await request(app).delete('/api/enrollments/e-req-2').set('Authorization', `Bearer ${token}`);
+    expect(withdrawn.status).toBe(200);
+    expect(withdrawn.body).toMatchObject({ _id: 'e-req-2', status: 'withdrawn' });
+    expect(withdrawn.body.withdrawnAt).toBeTruthy();
+
+    const reactivated = await request(app).patch('/api/enrollments/e-req-2/reactivate').set('Authorization', `Bearer ${token}`);
+    expect(reactivated.status).toBe(200);
+    expect(reactivated.body).toMatchObject({ _id: 'e-req-2', status: 'active', withdrawnAt: null });
+  });
+
   it('genera automáticamente el correlativo de un curso nuevo', async () => {
     const { token } = await login();
     const response = await request(app).post('/api/courses').set('Authorization', `Bearer ${token}`).send({ name: 'Arquitectura de Software', credits: 4, hours: 5 });
